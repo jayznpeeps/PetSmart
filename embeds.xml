@@ -1,0 +1,65 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+
+<!-- Everything PetSmart loads, in order. Order matters: each file can use
+     what the files above it shared through the addon namespace (ns). -->
+
+<!-- Libraries: LibStub first, then CallbackHandler, then everything that needs them. -->
+<Script file="Libs\LibStub\LibStub.lua"/>
+<Script file="Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua"/>
+<Script file="Libs\HereBeDragons\HereBeDragons-2.0.lua"/>
+<Script file="Libs\HereBeDragons\HereBeDragons-Pins-2.0.lua"/>
+<Script file="Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua"/>
+
+<!-- Static data (pets, abilities, rares, tame areas). -->
+<Script file="Data\Core.lua"/>
+<Script file="Data\FamilyData.lua"/>
+<Script file="Data\RareSpawnData.lua"/>
+<Script file="Data\TameTeacherAreaData.lua"/>
+<Script file="Data\TameTeacherSpawnData.lua"/>
+<Script file="Data\FamilyInfoData.lua"/>
+<Script file="Data\PetTypeDescriptions.lua"/>
+<Script file="Data\PetAbilityDescriptions.lua"/>
+<Script file="Data\GeneralTrainingInfo.lua"/>
+<Script file="Data\PetAbilitiesData.lua"/>
+<Script file="Data\PetopiaTameData.lua"/>
+
+<!-- Shared setup -->
+<Script file="Core\Init.lua"/>
+
+<!-- Pet feeding -->
+<Script file="Feeding\Food.lua"/>
+
+<!-- Tracking state (needed by the Feed Pet icon's tooltip) -->
+<Script file="Tracking\TrackingState.lua"/>
+
+<!-- Feed Pet icon and food panel -->
+<Script file="Feeding\FeedButton.lua"/>
+
+<!-- Compendium window -->
+<Script file="Compendium\Frame.lua"/>
+
+<!-- Pet experience bar (its Options sliders live in the Compendium's scroll area) -->
+<Script file="ExperienceBar\ExperienceBar.lua"/>
+
+<!-- Map tracking -->
+<Script file="Tracking\MapPins.lua"/>
+<Script file="Tracking\Tracking.lua"/>
+
+<!-- Compendium navigation and page drawing -->
+<Script file="Compendium\Navigation.lua"/>
+<Script file="Compendium\Refresh.lua"/>
+
+<!-- Compendium sections (one file per section icon) -->
+<Script file="Sections\Pet.lua"/>
+<Script file="Sections\Abilities.lua"/>
+<Script file="Sections\Training.lua"/>
+<Script file="Sections\PetTypes.lua"/>
+<Script file="Sections\RareSpawns.lua"/>
+<Script file="Sections\Options.lua"/>
+
+<!-- Launchers (icon clicks, LibDataBroker, minimap button), then events/slash commands last -->
+<Script file="Core\Launchers.lua"/>
+<Script file="Core\Events.lua"/>
+
+</Ui>
