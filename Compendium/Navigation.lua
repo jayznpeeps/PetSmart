@@ -22,27 +22,36 @@ local SECTIONS = {
     -- Current pet: only shown while a pet is out (see LayoutNavIcons);
     -- its tooltip and page title are the pet's own name.
     { key = "pet",       label = "Pet",                   root = "pet",      art = SECTION_ART.pet, needsPet = true },
-    { key = "abilities", label = "Pet Abilities",         root = "learned",  art = SECTION_ART.abilities },
+    { key = "abilities", label = "Abilities Index",       root = "index",    art = SECTION_ART.abilities },
     { key = "training",  label = "General Training Info", root = "training", art = SECTION_ART.training },
     { key = "types",     label = "Pet Types",             root = "types",    art = SECTION_ART.types },
     { key = "spawns",    label = "Rare Pet Spawns",       root = "spawns",   art = SECTION_ART.spawns },
     { key = "options",   label = "Options",               root = "options",  art = SECTION_ART.options },
 }
 local SECTION_BY_MODE = {
-    pet = "pet",
-    learned = "abilities", unlearned = "abilities", index = "abilities",
-    detail = "abilities", tamedetail = "abilities",
+    pet = "pet", learned = "pet", unlearned = "pet",
+    index = "abilities", detail = "abilities", tamedetail = "abilities",
     training = "training",
     types = "types", typedetail = "types",
     spawns = "spawns", raredetail = "spawns",
     options = "options", profiles = "options",
 }
+-- Which section a mode belongs to. The pet's Learned/Unlearned ability
+-- lists (opened from links on the pet page) belong to the pet's section,
+-- and so does an ability page opened from Unlearned; one opened from the
+-- Abilities Index belongs to the Abilities Index section.
+local function SectionForMode(mode)
+    if (mode == "detail" or mode == "tamedetail") and ns.detailReturnMode == "unlearned" then
+        return "pet"
+    end
+    return SECTION_BY_MODE[mode] or "abilities"
+end
+
 -- Modes that are a section's top page: no back icon there, since the
--- icon column is the way out. Learned/Unlearned/Abilities Index are three
--- tabs of the same top page.
+-- icon column is the way out. (Learned/Unlearned are sub-pages of the
+-- pet page now, so they get a back icon to it.)
 local TOP_LEVEL_MODES = {
-    pet = true,
-    learned = true, unlearned = true, index = true,
+    pet = true, index = true,
     training = true, types = true, spawns = true, options = true,
 }
 local VALID_LAST_SECTION = {}
@@ -136,6 +145,42 @@ do
     end
 end
 
+-- Current-pet art: the medallion for the pet's family (Media\Pet-Families),
+-- used for both its nav icon and the pet page's watermark. Cats use the
+-- seated black lion (the section's original art), which is also the
+-- fallback when the family can't be read.
+local FAMILY_ART_DIR = "Interface\\AddOns\\PetSmart\\Media\\Pet-Families\\"
+local FAMILY_ART = {
+    [1] = "Wolf", [3] = "Spider", [4] = "Bear", [5] = "Boar", [6] = "Crocolisk",
+    [7] = "CarrionBird", [8] = "Crab", [9] = "Gorilla", [11] = "Raptor",
+    [12] = "Tallstrider", [20] = "Scorpid", [21] = "Turtle", [24] = "Bat",
+    [25] = "Hyena", [26] = "BirdofPrey", [27] = "WindSerpent", [40] = "Fox",
+}
+function PetPage.FamilyArt()
+    local family = UnitExists("pet") and UnitCreatureFamily and UnitCreatureFamily("pet")
+    if not family or ns.AnySecret(family) then return SECTION_ART.pet end
+    local id = ns.FAMILY_BY_NAME and ns.FAMILY_BY_NAME[family]
+    if not id and family == "Owl" then id = 26 end -- pre-rename name for Bird of Prey
+    if id == 2 then return SECTION_ART.pet end -- Cat: the seated black lion is its medallion
+    local file = id and FAMILY_ART[id]
+    return file and (FAMILY_ART_DIR .. file) or SECTION_ART.pet
+end
+
+-- Points the pet nav icon and the pet page watermark at the current pet's
+-- family medallion (only touches the textures when it actually changes).
+function PetPage.UpdateFamilyArt()
+    local art = PetPage.FamilyArt()
+    if PetPage.familyArt == art then return end
+    PetPage.familyArt = art
+    PetPage.bg:SetTexture(art)
+    for _, b in ipairs(navIcons) do
+        if b.section.needsPet then
+            b.icon:SetTexture(art)
+            b.glow:SetTexture(art)
+        end
+    end
+end
+
 -- Stacks the visible icons from the top of the column. The current-pet
 -- icon only shows while a pet is out, at the very top, pushing the rest
 -- down one slot; without a pet the rest sit exactly where they always do.
@@ -162,7 +207,8 @@ PetPage.LayoutNavIcons()
 -- (and re-stacks the column first, in case a pet was summoned/dismissed).
 local function UpdateNavIcons()
     PetPage.LayoutNavIcons()
-    local current = SECTION_BY_MODE[ns.abilitiesMode] or "abilities"
+    PetPage.UpdateFamilyArt()
+    local current = SectionForMode(ns.abilitiesMode)
     for _, b in ipairs(navIcons) do
         local selected = (b.section.key == current) and b:IsShown()
         b.selected = selected
@@ -186,6 +232,7 @@ end
 
 -- Exported for the other PetSmart files.
 ns.HideAllRows = HideAllRows
+ns.SectionForMode = SectionForMode
 ns.SetAbilitiesMode = SetAbilitiesMode
 ns.TOP_LEVEL_MODES = TOP_LEVEL_MODES
 ns.UpdateNavIcons = UpdateNavIcons

@@ -35,33 +35,42 @@ ns.Pages = ns.Pages or {}
 
 ns.RefreshAbilitiesPanel = function()
     if not abilitiesPanel:IsShown() then return end
-    -- Pet dismissed (or died/stabled) while its page was open: its icon is
-    -- about to disappear, so move over to Pet Abilities.
-    if ns.abilitiesMode == "pet" and not UnitExists("pet") then
-        ns.abilitiesMode = "learned"
+    -- Pet dismissed (or died/stabled) while one of its pages was open: its
+    -- icon is about to disappear, so move over to the Abilities Index.
+    if ns.SectionForMode(ns.abilitiesMode) == "pet" and not UnitExists("pet") then
+        ns.abilitiesMode = "index"
     end
+    local inPetSection = (ns.SectionForMode(ns.abilitiesMode) == "pet")
     HideAllRows()
 
     -- The pet page scrolls with the mouse wheel only (no visible bar);
     -- every other page shows PetSmart's scrollbar.
-    ns.scrollBar:SetShown(ns.abilitiesMode ~= "pet")
+    -- The pet's Learned/Unlearned lists are part of the pet page, so they
+    -- scroll the same way.
+    local petView = ns.abilitiesMode == "pet" or ns.abilitiesMode == "learned" or ns.abilitiesMode == "unlearned"
+    ns.scrollBar:SetShown(not petView)
 
-    -- The Learned/Unlearned sub-tabs only make sense while inside the
-    -- "Pet Abilities" section (including a detail page reached from it).
-    -- Abilities Index is now the third tab of this row too. (An ability
-    -- detail page reached from the Index keeps the tabs hidden, since its
-    -- subtitle - the ability's name - sits in this same row.)
-    local inPetAbilities = (ns.abilitiesMode == "learned") or (ns.abilitiesMode == "unlearned") or (ns.abilitiesMode == "index")
-        or (ns.abilitiesMode == "detail" and ns.detailReturnMode == "unlearned")
+    -- Learned/Unlearned tabs: on the pet's two ability lists (and an
+    -- ability page opened from Unlearned), to switch between them. The
+    -- Abilities Index is its own section icon now, so no tab for it.
+    -- (The lists themselves switch with the pet header's own links.)
+    local inPetAbilities = (ns.abilitiesMode == "detail" and ns.detailReturnMode == "unlearned")
     tabLearned:SetShown(inPetAbilities)
     tabUnlearned:SetShown(inPetAbilities)
-    tabIndexLink:SetShown(inPetAbilities)
+    tabIndexLink:Hide()
     tabLearned.active = (ns.abilitiesMode == "learned")
     tabUnlearned.active = (ns.abilitiesMode == "unlearned") or (ns.abilitiesMode == "detail" and ns.detailReturnMode == "unlearned")
-    tabIndexLink.active = (ns.abilitiesMode == "index")
-    for _, tab in ipairs({ tabLearned, tabUnlearned, tabIndexLink }) do
+    for _, tab in ipairs({ tabLearned, tabUnlearned }) do
         tab.text:SetTextColor(tab.active and 1 or 0.6, tab.active and 0.85 or 0.6, tab.active and 0.2 or 0.6)
     end
+    -- Learned / Unlearned links on the pet page itself (right side of the
+    -- loyalty row).
+    -- Shown on the stats view and on both lists; the open list's link is gold.
+    ns.petLinkLearned:SetShown(petView)
+    ns.petLinkUnlearned:SetShown(petView)
+    ns.petLinkLearned.selected = (ns.abilitiesMode == "learned")
+    ns.petLinkUnlearned.selected = (ns.abilitiesMode == "unlearned")
+    for _, link in ipairs({ ns.petLinkLearned, ns.petLinkUnlearned }) do link:UpdateColor() end
 
     UpdateNavIcons()
 
@@ -71,14 +80,12 @@ ns.RefreshAbilitiesPanel = function()
     petTypesBgTexture:SetShown(ns.abilitiesMode == "types" or ns.abilitiesMode == "typedetail")
     -- Dragon-medallion watermark: Rare Pet Spawns and its detail page only.
     rareSpawnsBgTexture:SetShown(ns.abilitiesMode == "spawns" or ns.abilitiesMode == "raredetail")
-    -- Paw-book watermark: Pet Abilities (Learned/Unlearned), the Abilities
-    -- Index, and any ability detail page reached from either of those.
-    abilitiesBgTexture:SetShown(ns.abilitiesMode == "learned" or ns.abilitiesMode == "unlearned" or ns.abilitiesMode == "index" or ns.abilitiesMode == "tamedetail"
-        or (ns.abilitiesMode == "detail" and (ns.detailReturnMode == "learned" or ns.detailReturnMode == "unlearned" or ns.detailReturnMode == "index")))
+    -- Paw-book watermark: the Abilities Index and pages opened from it.
+    abilitiesBgTexture:SetShown(ns.SectionForMode(ns.abilitiesMode) == "abilities")
     -- Elf-and-lion watermark: General Training Info only.
     trainingBgTexture:SetShown(ns.abilitiesMode == "training")
-    -- Seated black lion: the current-pet page.
-    PetPage.bg:SetShown(ns.abilitiesMode == "pet")
+    -- Seated black lion: the pet page and its Learned/Unlearned lists.
+    PetPage.bg:SetShown(inPetSection)
 
     -- Default: no subtitle. Detail pages below set one (the ability,
     -- family, rare, creature or "Manage Profiles") and show it.
@@ -90,9 +97,15 @@ ns.RefreshAbilitiesPanel = function()
     -- step up from wherever you are.
     local showNav = not TOP_LEVEL_MODES[ns.abilitiesMode]
     navBack:SetShown(showNav)
+    -- On the pet's Learned/Unlearned lists the back icon sits under the
+    -- "Unlearned" link (the XP bar has the top-right corner); everywhere else
+    -- it's in the top-right corner.
+    ns.PlaceBackButton(ns.abilitiesMode == "learned" or ns.abilitiesMode == "unlearned")
     if showNav then
-        local backTarget = "learned"
-        if ns.abilitiesMode == "detail" then
+        local backTarget = "index"
+        if ns.abilitiesMode == "learned" or ns.abilitiesMode == "unlearned" then
+            backTarget = "pet"
+        elseif ns.abilitiesMode == "detail" then
             backTarget = ns.detailReturnMode
         elseif ns.abilitiesMode == "typedetail" then
             backTarget = "types"
@@ -124,6 +137,7 @@ ns.RefreshAbilitiesPanel = function()
     iconSizeSlider:Hide()
     XP.widthSlider:Hide()
     XP.heightSlider:Hide()
+    XP.colorRow:Hide()
     if PetPage.HideWidgets then PetPage.HideWidgets() end
 
     local rowWidth = GetRowWidth()
@@ -201,7 +215,7 @@ tabUnlearned:SetScript("OnClick", function() SetAbilitiesMode("unlearned") end)
 -- first time.
 abilitiesPanel:SetScript("OnShow", function()
     local mode = ns.profile and ns.profile.lastSection
-    if not VALID_LAST_SECTION[mode] or (mode == "pet" and not UnitExists("pet")) then mode = "learned" end
+    if not VALID_LAST_SECTION[mode] or (mode == "pet" and not UnitExists("pet")) then mode = "index" end
     SetAbilitiesMode(mode)
 end)
 -- Deliberately NOT added to UISpecialFrames - Esc no longer closes this

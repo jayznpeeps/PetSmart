@@ -1,24 +1,39 @@
 # PetSmart Changelog
 
-## v1.61.0
+## v1.60.1e
 
-- **Fixed:** while the pet page was open, hovering another section icon lost its highlight after a moment (the page's live refresh was resetting the icons). Hovered icons now stay lit, and the icons only re-arrange when a pet is summoned or dismissed.
-- **Fixed:** the pet page (and the floating XP bar) threw "attempt to perform arithmetic on a secret number value" on clients that return protected "secret" stat values (e.g. pet health). Those values are now shown as-is; while they're secret the page can't add up or compare them, so numbers show without thousands separators, buff/debuff colouring is skipped, Attack Power shows the base value, Movement Speed shows "--" and the XP percentage is left off. Scrolling no longer errors on those clients either, on any Compendium page: the Compendium now has its own scrollbar (same look: arrows, draggable knob, mouse wheel) instead of Blizzard's scroll template, which broke once the scroll range became a secret value.
-- **New: pet experience bar.** A free-floating experience bar, visible while a pet is out, styled like the one on the Compendium's pet page (gold-brown rounded border, blue gradient fill, gold at max level). It shows your pet's name, level and XP, e.g. "Muddles - 30 - XP: 12,480/34,900 (35%)"; on a narrower bar it drops the numbers first, then the name, keeping the percentage. Drag it to move it and drag its corner to resize it; hovering shows the exact XP and how much is left to the next level. New **Pet Experience Bar** options: Show Experience Bar, Show Bar Text, Lock Bar (Move/Resize), and Bar Width / Bar Height sliders. Saved per profile.
-- **Under the hood:** the addon's code is now split into separate files by area instead of one large PetSmart.lua: `Core/` (setup, launchers, events), `Feeding/` (food and the Feed Pet icon), `Tracking/` (map pins and tracking), `Compendium/` (the window and page drawing) and `Sections/` (one file per Compendium section: Pet, Abilities, Training, Pet Types, Rare Spawns, Options). Everything loads in order from `embeds.xml`. No change in behaviour; this keeps each file well clear of Lua's per-file limits (the old single file was within 2 of one of them).
-- The `Media` folder is sorted into `UI-Elements`, `Section-Backgrounds`, `Rare-Elements` and `Tame-Elements` (which holds the tame spawn-area `Areas`).
-- **Compendium UI overhaul:** the Compendium is now a three-panel window.
-  - **Top:** the new PetSmart logo, always visible, over a banner of the black lion (left) and white lion (right) set in one shared galaxy scene. Widening the window reveals more of the galaxy at either end; the lions always stay beside the logo.
-  - **Left:** a column of section icons - Pet Abilities, General Training Info, Pet Types, Rare Pet Spawns and Options - each using that section's medallion artwork. Hovering an icon shows the section's name (Pet Abilities, General Training Info, Pet Types, Rare Pet Spawns, Options); the open section's icon is highlighted with a gold marker.
-  - **Right:** the selected section's content (e.g. clicking the Rare Pet Spawns icon shows the rare pets list, Current Zone section and Track buttons, exactly as before).
-- **New: current pet page.** While you have a pet out, a new icon (the seated black lion) appears at the top of the icon column and the others shift down one; it disappears again when the pet is dismissed. Its tooltip and page title are your pet's name, with "Level N Family" and the pet's current loyalty (e.g. "Best Friend") underneath. The page is styled after the in-game pet panel: an experience bar (blue gradient fill, gold at max level, framed to match the section headers), then framed **General** (health, armor, damage, attack power, critical strike, movement speed), **Resistances** (arcane, fire, frost, nature, shadow, each with its school icon) and **Abilities** (the active abilities your pet's family can learn, three per row: its Family Special plus tame-learned abilities like Bite, Claw, Cower, Dash and Dive; names only, no ranks; trainer-learned abilities such as the resistances are left out) sections, with gold labels and right-aligned values over the page's background art, and buffed/debuffed values in green/red. Everything updates live while the page is open. The page scrolls with the mouse wheel and has no visible scrollbar. If the pet is dismissed while you're on this page, the Compendium switches to Pet Abilities.
-  - Critical strike uses the game's own pet crit value when the client provides one; otherwise it shows an estimate marked with "~" (5% base plus 3% per rank of Ferocity).
-- The old main menu page has been replaced by the icon column. The Compendium now reopens on whichever section you used last.
-- **Abilities Index** is now the third tab of Pet Abilities (next to Learned and Unlearned), since both share the paw-book icon.
-- The "Main" button is gone (the icons do that job now). The "<- Back" text is replaced by a clickable paw-shield icon in the top-right corner of detail pages (an ability, pet type, rare, tameable creature or Manage Profiles); it steps back one level, e.g. from a rare back to the Rare Pet Spawns list.
-- **Track/Untrack** is now a paw-print trail icon instead of text: **gold** with a faint glow while tracked, **grey** while not. Click it to toggle; hovering shows "Track" or "Untrack" ("Untrack All" when several rares are tracked). Hovering the back icon shows "Back". It's used on a rare's page, a tameable creature's page, and the Rare Pet Spawns / Abilities Index pages (where it untracks whatever's tracked). Tracked rares in the lists show a small gold paw trail instead of "[Tracked]".
+### Compendium redesign
+- **Three-panel window:** the PetSmart logo sits across the top over a banner of the black and white lions, section icons run down the left (hover for the section's name; the open one is marked in gold), and the selected section's content shows on the right.
+- The old main menu page and the "Main" button are replaced by the icon column. The Compendium reopens on whichever section you used last.
+- **Back icon:** detail pages have a paw-shield icon that steps back one level, replacing the "<- Back" text.
+- **Track/Untrack icon:** a paw-print trail replaces the text; gold while tracked, grey while not.
 - Page titles no longer start with "PetSmart - ", since the logo is always shown above them.
 - The Compendium's default size is larger to fit the new layout. Its saved size starts fresh once after updating (your saved position is kept); after that, resizing is remembered as before.
+
+### New: current pet page
+- While you have a pet out, a new icon appears at the top of the icon column and the others shift down one; it disappears when the pet is dismissed. If the pet is dismissed while its page is open, the Compendium switches to the Abilities Index.
+- **Family art:** the icon and the page's background show the medallion for your pet's family (Bat, Bear, Bird of Prey, Boar, Carrion Bird, Cat (the seated black lion), Crab, Crocolisk, Fox, Gorilla, Hyena, Raptor, Scorpid, Spider, Tallstrider, Turtle, Wind Serpent, Wolf), switching when you summon a different pet.
+- **Header:** the pet's name, "Level N Family" and current loyalty (e.g. "Best Friend"), with the pet's experience bar on the right ("XP: 12,480 / 34,900 (35%)": blue gradient, gold at max level). The icon's tooltip is the pet's name.
+- **Stats**, styled after the in-game pet panel, in framed sections:
+  - **General:** health, armor, damage, attack power, critical strike and movement speed.
+  - **Resistances:** arcane, fire, frost, nature and shadow, each with its school icon.
+  - **Abilities:** the active abilities your pet's family can learn, three per row (its Family Special plus tame-learned abilities like Bite, Claw, Cower, Dash and Dive; names only, no trainer-learned abilities).
+  - Buffed and debuffed values are green and red.
+- **Learned / Unlearned:** the pet's learned and unlearned ability lists moved from their own page into the pet page. Links on the right of the header swap the stats for either list, and a back arrow returns to the stats.
+- Everything updates live while the page is open.
+
+### New: pet experience bar
+- A movable, resizable bar showing your pet's name, level and XP while a pet is out. Its options (show/hide, text, lock, colour, width and height) are under Options > Pet Experience Bar.
+
+### Other changes
+- **Abilities Index:** now its own section icon (tooltip and page header "Abilities Index"), and it opens with all sections expanded; click a section heading to collapse it.
+- **Teacher pet tracking:** a teacher pet that is also one of the listed rare spawns (40 of them, e.g. Timber, Bjarn, Broken Tooth, Leech Widow) uses the rare pin on the world map and minimap instead of the bronze paw pin.
+- **Profiles use the full character name.** WoW: Forever characters have a first and second name and no realm, so profiles are keyed by the full name ("First Last") instead of "Name - Realm". Existing saves move over automatically on login: the character keeps its profile and settings, and a personal profile named after the first name alone is renamed to the full name (unless another character shares it). Manage Profiles shows "First Last is using:".
+- **New option: Show Tooltip.** Options > Tooltip > Show Tooltip turns the main (feed) icon's hover tooltip on or off. On by default.
+- Options: the Multi-Tracking note is shown next to the option, "(can break immersion)".
+
+### Under the hood
+- Code restructuring and cleanup.
 
 ## v1.60.1d
 

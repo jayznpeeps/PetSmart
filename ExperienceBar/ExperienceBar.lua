@@ -84,6 +84,24 @@ do
     f.grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
 end
 
+-- Fill gradient for the floating bar: the player's chosen colour (Options)
+-- shading from a darker version of it on the left to the colour itself on
+-- the right, or the default blue; gold at max level either way.
+function XP.FillColors(atMax)
+    if atMax then return ns.BAR_COLORS.max end
+    local c = ns.profile and ns.profile.xpBarColor
+    if type(c) == "table" and c[1] then
+        return { c[1] * 0.4, c[2] * 0.4, c[3] * 0.4, c[1], c[2], c[3] }
+    end
+    return ns.BAR_COLORS.xp
+end
+
+-- The colour shown on the Options swatch (the bright end of the fill).
+function XP.CurrentColor()
+    local c = XP.FillColors(false)
+    return c[4], c[5], c[6]
+end
+
 function XP.Num(n)
     n = math.floor((n or 0) + 0.5)
     if BreakUpLargeNumbers then return BreakUpLargeNumbers(n) end
@@ -108,7 +126,7 @@ function XP.Clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 function XP.UpdateSecret(f, cur, max)
     f.bar:SetMinMaxValues(0, max)
     f.bar:SetValue(cur)
-    ns.SetBarGradient(f.bar, unpack(ns.BAR_COLORS.xp))
+    ns.SetBarGradient(f.bar, unpack(XP.FillColors(false)))
     local w, h = f:GetWidth(), f:GetHeight()
     if XP.fontPath then
         f.text:SetFont(XP.fontPath, XP.Clamp(math.floor(h - 12), XP.fontSize, 16), XP.fontFlags)
@@ -147,7 +165,7 @@ function XP.Update()
     local frac = atMax and 1 or XP.Clamp(cur / max, 0, 1)
     f.bar:SetMinMaxValues(0, 1)
     f.bar:SetValue(frac)
-    ns.SetBarGradient(f.bar, unpack(atMax and ns.BAR_COLORS.max or ns.BAR_COLORS.xp))
+    ns.SetBarGradient(f.bar, unpack(XP.FillColors(atMax)))
 
     -- Text grows with the bar's height, like the bar itself.
     local w, h = f:GetWidth(), f:GetHeight()
@@ -316,8 +334,86 @@ do
         sl:Hide()
         return sl
     end
+    -- Options-panel "Bar Color" row: a colour swatch that opens the game's
+    -- colour picker, plus a Reset link back to the default blue. Positioned
+    -- by hand on the Options page, like the sliders.
+    do
+        local row = CreateFrame("Button", "PetSmartXPColorButton", scrollChild)
+        row:SetHeight(22)
+        row.border = row:CreateTexture(nil, "BACKGROUND")
+        row.border:SetSize(18, 18)
+        row.border:SetPoint("LEFT", 2, 0)
+        row.border:SetColorTexture(0.55, 0.45, 0.3, 1)
+        row.swatch = row:CreateTexture(nil, "ARTWORK")
+        row.swatch:SetSize(14, 14)
+        row.swatch:SetPoint("CENTER", row.border, "CENTER", 0, 0)
+        row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        row.label:SetPoint("LEFT", row.border, "RIGHT", 8, 0)
+        row.label:SetText("Bar Color  |cff999999(click to change)|r")
+        row:SetHighlightTexture("Interface\\Buttons\\UI-Listbox-Highlight", "ADD")
+        row:SetScript("OnClick", function() XP.OpenColorPicker() end)
+        row.reset = CreateFrame("Button", "PetSmartXPColorReset", row)
+        row.reset:SetSize(50, 18)
+        row.reset:SetPoint("RIGHT", -8, 0)
+        row.reset.text = row.reset:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        row.reset.text:SetAllPoints()
+        row.reset.text:SetJustifyH("RIGHT")
+        row.reset.text:SetText("Reset")
+        row.reset.text:SetTextColor(0.6, 0.8, 1)
+        row.reset:SetScript("OnEnter", function(self) self.text:SetTextColor(1, 1, 1) end)
+        row.reset:SetScript("OnLeave", function(self) self.text:SetTextColor(0.6, 0.8, 1) end)
+        row.reset:SetScript("OnClick", function() XP.SetColor(nil) end)
+        row:Hide()
+        XP.colorRow = row
+    end
+
     XP.widthSlider = MakeSlider("PetSmartXPWidthSlider", XP.MIN_W, XP.MAX_W, "Bar Width: %dpx", "xpBarWidth")
     XP.heightSlider = MakeSlider("PetSmartXPHeightSlider", XP.MIN_H, XP.MAX_H, "Bar Height: %dpx", "xpBarHeight")
+end
+
+-- Sets the bar's colour (nil = back to the default blue), repaints the
+-- bar and the Options swatch.
+function XP.SetColor(r, g, b)
+    if not ns.profile then return end
+    ns.profile.xpBarColor = r and { r, g, b } or nil
+    XP.Update()
+    XP.UpdateSwatch()
+end
+
+function XP.UpdateSwatch()
+    local row = XP.colorRow
+    if not row then return end
+    row.swatch:SetColorTexture(XP.CurrentColor())
+    row.reset:SetShown(ns.profile and ns.profile.xpBarColor ~= nil)
+end
+
+-- Opens the game's colour picker on the bar's current colour. Dragging in
+-- the picker recolours the bar live; Cancel puts the previous colour back.
+-- Newer clients use SetupColorPickerAndShow, older ones the field API.
+function XP.OpenColorPicker()
+    local cp = ColorPickerFrame
+    if not (cp and ns.profile) then return end
+    local had = ns.profile.xpBarColor
+    local before = had and { had[1], had[2], had[3] } or nil
+    local r, g, b = XP.CurrentColor()
+    local function picked()
+        local nr, ng, nb = cp:GetColorRGB()
+        XP.SetColor(nr, ng, nb)
+    end
+    local function cancelled()
+        if before then XP.SetColor(before[1], before[2], before[3]) else XP.SetColor(nil) end
+    end
+    if cp.SetupColorPickerAndShow then
+        cp:SetupColorPickerAndShow({ r = r, g = g, b = b, hasOpacity = false,
+            swatchFunc = picked, cancelFunc = cancelled })
+    else
+        cp.hasOpacity = false
+        cp.previousValues = { r, g, b }
+        cp.func, cp.swatchFunc, cp.cancelFunc = picked, picked, cancelled
+        cp:SetColorRGB(r, g, b)
+        cp:Hide()
+        cp:Show()
+    end
 end
 
 -- Exported for the other PetSmart files.

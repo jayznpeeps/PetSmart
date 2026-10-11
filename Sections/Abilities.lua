@@ -346,7 +346,9 @@ local function BuildIndexLines()
 end
 
 ns.Pages.learned = function(ctx)
-    abilitiesPanel.title:SetText("Pet Abilities")
+    -- Part of the pet page: same header (name, level, loyalty, XP bar),
+    -- with this list in place of the stats.
+    if UnitExists("pet") then ns.PetPage.Header() else abilitiesPanel.title:SetText("Pet Abilities") end
     if not UnitExists("pet") then
         ctx.AddLine("No pet currently active.", 0.8, 0.8, 0.8)
     else
@@ -360,7 +362,9 @@ ns.Pages.learned = function(ctx)
 end
 
 ns.Pages.unlearned = function(ctx)
-    abilitiesPanel.title:SetText("Pet Abilities")
+    -- Part of the pet page: same header (name, level, loyalty, XP bar),
+    -- with this list in place of the stats.
+    if UnitExists("pet") then ns.PetPage.Header() else abilitiesPanel.title:SetText("Pet Abilities") end
     if not UnitExists("pet") then
         ctx.AddLine("No pet currently active.", 0.8, 0.8, 0.8)
     else
@@ -381,9 +385,10 @@ ns.Pages.index = function(ctx)
         ctx.AddLine("No ability data loaded.", 0.7, 0.7, 0.7)
     else
         for _, section in ipairs(sections) do
-            local expanded = indexCategoryExpanded[section.category]
+            -- Sections start expanded; the player can collapse any of them.
+            local expanded = indexCategoryExpanded[section.category] ~= false
             ctx.AddLine(section.category, 1, 0.82, 0, function()
-                indexCategoryExpanded[section.category] = not indexCategoryExpanded[section.category]
+                indexCategoryExpanded[section.category] = not expanded
                 ns.RefreshAbilitiesPanel()
             end)
             if expanded then

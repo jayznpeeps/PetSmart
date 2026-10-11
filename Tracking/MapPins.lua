@@ -421,6 +421,24 @@ local TAME_MAX_OVERLAY_POINTS = 12
 local TAME_AREA_TEXTURE = "Interface\\AddOns\\PetSmart\\Media\\Tame-Elements\\TameSpawnAreaOverlay"
 local TAME_AREA_DEFAULT_RADIUS = 3.5
 
+-- A teacher pet that is also one of the listed rare spawns (Timber, Bjarn,
+-- Leech Widow...) gets the rare dragon-head pin instead of the bronze paw,
+-- so it reads the same as when it's tracked from the Rare Pet Spawns list.
+-- Matched by name against ns.RARE_SPAWNS, cached per name.
+local rareNameCache = {}
+local function IsRareSpawnName(name)
+    if not name then return false end
+    local hit = rareNameCache[name]
+    if hit == nil then
+        hit = false
+        for _, rare in ipairs(ns.RARE_SPAWNS or {}) do
+            if rare.name == name then hit = true; break end
+        end
+        rareNameCache[name] = hit
+    end
+    return hit
+end
+
 -- Stretches an overlay across the zone-percent bounding box (x1,y1)-(x2,y2).
 local function PositionAreaBox(overlay, x1, y1, x2, y2)
     local canvas = GetMapCanvas()
@@ -521,6 +539,7 @@ local function RefreshTameWorldMapPins()
         pin.teacherName = ns.trackedTameTeacher.name
         pin.teacherLabel = Tame.GetLabel(ns.trackedTameTeacher.name, info)
         pin.teacherZone = info.zone
+        pin.tex:SetTexture(IsRareSpawnName(ns.trackedTameTeacher.name) and WORLD_PIN_TEXTURE or TAME_WORLD_PIN_TEXTURE)
         local ok, err = pcall(PositionWorldPin, pin, point.x / 100, point.y / 100)
         if ok then
             pin:Show()
@@ -619,6 +638,7 @@ local function UpdateTameMinimapPins()
                 if mp then
                     mp.teacherName = ns.trackedTameTeacher.name
                     mp.teacherLabel = Tame.GetLabel(ns.trackedTameTeacher.name, info)
+                    mp.tex:SetTexture(IsRareSpawnName(ns.trackedTameTeacher.name) and MINIMAP_PIN_TEXTURE or TAME_MINIMAP_PIN_TEXTURE)
                     local ok, err = pcall(HBDP.AddMinimapIconMap, HBDP, ns, mp, info.mapID, point.x / 100, point.y / 100, false, true)
                     if not ok then LogOnce("loggedTameMinimapError", "AddMinimapIconMap (tame teacher)", err) end
                 end

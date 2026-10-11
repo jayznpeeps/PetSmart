@@ -18,7 +18,7 @@ local panelTemplate = ns.panelTemplate
 -- and wrapped "Usable by:" lines - are never cut off or truncated.
 ----------------------------------------------------------------------
 ----------------------------------------------------------------------
--- v1.61.0 three-panel layout:
+-- v1.60.1e three-panel layout:
 --   * Top: logo bar - the PetSmart logo, always visible.
 --   * Left: a narrow column of section icons (each section's medallion
 --     artwork - the same images used as that section's watermark).
@@ -45,6 +45,7 @@ local LAYOUT = {
     BANNER_ALPHA = 0.70, -- faded backdrop, but stronger than the section watermarks
     BACK_TEXTURE = "Interface\\AddOns\\PetSmart\\Media\\UI-Elements\\BackButton",
     BACK_SIZE = 26,
+    BACK_ROW_GAP = 0, -- pet Learned/Unlearned lists: gap between the "Unlearned" link and the back icon below it
     -- Track/Untrack toggle: a trail of paw prints. Gold with a faint glow
     -- while tracked, plain grey while not.
     TRACK_ON_TEXTURE  = "Interface\\AddOns\\PetSmart\\Media\\UI-Elements\\TrackPawOn",
@@ -283,6 +284,24 @@ local tabUnlearned = MakeTabButton("Unlearned", 92, 90, -32, "TOPLEFT")
 -- the same paw-book artwork.)
 local tabIndexLink = MakeTabButton("Abilities Index", 188, 130, -32, "TOPLEFT")
 
+-- Pet page: "Learned" / "Unlearned" links on the right, centred between the
+-- subheader (level/family) and the loyalty line below it, opening the pet's two ability lists. Shown on
+-- the pet page only (see RefreshAbilitiesPanel); OnClick is set in
+-- Sections/Pet.lua.
+local petLinkUnlearned = MakeTabButton("Unlearned", -8, 80, -34)
+local petLinkLearned = MakeTabButton("Learned", -96, 66, -34)
+for _, link in ipairs({ petLinkLearned, petLinkUnlearned }) do
+    link.active = true
+    -- Blue link; gold while its list is the one open (link.selected).
+    function link:UpdateColor()
+        if self.selected then self.text:SetTextColor(1, 0.82, 0) else self.text:SetTextColor(0.6, 0.8, 1) end
+    end
+    link:UpdateColor()
+    link:SetScript("OnLeave", function(self) self:UpdateColor() end)
+    link:Hide()
+end
+ns.petLinkLearned, ns.petLinkUnlearned = petLinkLearned, petLinkUnlearned
+
 -- Back button: the paw-shield icon, top-right of the content panel, on
 -- detail pages only (a section's own top page is reached from its icon
 -- instead). It steps back one level - its destination is recomputed each
@@ -295,7 +314,11 @@ navBack:SetPoint("TOPRIGHT", contentPanel, "TOPRIGHT", -8, -4)
 navBack:SetNormalTexture(LAYOUT.BACK_TEXTURE)
 navBack:SetPushedTexture(LAYOUT.BACK_TEXTURE)
 do
+    -- A touch dimmer than the raw art, so it doesn't outshine the page.
+    local normal = navBack:GetNormalTexture()
+    if normal then normal:SetVertexColor(0.78, 0.78, 0.78) end
     local pushed = navBack:GetPushedTexture()
+    if pushed then pushed:SetVertexColor(0.78, 0.78, 0.78) end
     if pushed then
         -- Nudge the icon down-right a pixel while held, like a pressed button.
         pushed:ClearAllPoints()
@@ -306,9 +329,24 @@ do
     glow:SetAllPoints()
     glow:SetTexture(LAYOUT.BACK_TEXTURE)
     glow:SetBlendMode("ADD")
-    glow:SetAlpha(0.5)
+    glow:SetAlpha(0.3)
 end
 navBack:RegisterForClicks("LeftButtonUp")
+
+-- Top-right corner of the content panel, or (onPetRow) right-aligned under
+-- the pet header's "Unlearned" link - on the pet's Learned/Unlearned lists,
+-- where the top-right corner is taken by the XP bar. Same size both ways.
+-- (Called from RefreshAbilitiesPanel; the petLink buttons are created further down.)
+function ns.PlaceBackButton(onPetRow)
+    navBack:ClearAllPoints()
+    if onPetRow and ns.petLinkUnlearned then
+        -- the link's text is right-justified in its button, so their right edges line up
+        navBack:SetPoint("TOPRIGHT", ns.petLinkUnlearned, "BOTTOMRIGHT", 0, -LAYOUT.BACK_ROW_GAP)
+        navBack:SetFrameLevel(contentPanel:GetFrameLevel() + 10)
+    else
+        navBack:SetPoint("TOPRIGHT", contentPanel, "TOPRIGHT", -8, -4)
+    end
+end
 navBack:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:SetText("Back", 1, 1, 1)
@@ -530,9 +568,9 @@ ns.selectedFamilyId = nil
 ns.selectedRare = nil
 ns.selectedTameTeacher = nil -- the { name, family, levels, zone } mob entry behind a "tamedetail" page
 ns.detailReturnMode = "unlearned" -- "unlearned" | "index" - which view "< Back" returns to from a detail page
-ns.abilitiesMode = "learned" -- "learned" | "unlearned" | "index" | "detail" | "training" | "types" | "typedetail" | "spawns" | "raredetail" | "tamedetail"
+ns.abilitiesMode = "index" -- "pet" | "learned" | "unlearned" | "index" | "detail" | "training" | "types" | "typedetail" | "spawns" | "raredetail" | "tamedetail"
 local trainingInfoExpanded = {} -- [sectionIndex] = true once a General Training Info section has been expanded; sections start collapsed
-local indexCategoryExpanded = {} -- [categoryName] = true once an Abilities Index section has been expanded; sections start collapsed, same as General Training Info
+local indexCategoryExpanded = {} -- [categoryName] = false once an Abilities Index section has been collapsed; sections start expanded
 local savedScrollByMode = {} -- [mode] = last scroll position seen in that mode, so e.g. leaving the Abilities Index for a detail page and coming back restores where you were
 -- ns.RefreshAbilitiesPanel is defined in Compendium/Refresh.lua.
 
@@ -545,7 +583,7 @@ local function SaveAbilitiesPanelLayout()
     if point then
         ns.profile.abilitiesPanelPos = { point, relPoint, x, y }
     end
-    -- Saved under a new key in v1.61.0: sizes saved by older versions were
+    -- Saved under a new key in v1.60.1e: sizes saved by older versions were
     -- for the old single-panel layout and would be too small now.
     ns.profile.compendiumSize = { abilitiesPanel:GetWidth(), abilitiesPanel:GetHeight() }
 end
@@ -745,10 +783,12 @@ for _, fs in ipairs({ abilitiesPanel.title, abilitiesPanel.subtitle }) do
     end
 end
 
--- Right-hand boundary of the title's own row: the left edge of the back icon
--- (the leftmost of the two nav buttons, always shown/hidden together),
--- or the panel's own right edge when neither is shown (the main menu).
+-- Right-hand boundary of the title's own row: the left edge of the pet XP
+-- bar or the back icon, or the panel's own right edge when neither is shown.
 local function TitleRowRightEdge()
+    -- The pet header's XP bar comes first: on the pet's Learned/Unlearned
+    -- lists the back icon sits below it, not in the title row.
+    if PetPage.w and PetPage.w.xp and PetPage.w.xp:IsShown() then return PetPage.w.xp:GetLeft() end
     if navBack:IsShown() then return navBack:GetLeft() end
     return contentPanel:GetRight()
 end
@@ -797,6 +837,7 @@ ns.GetRow = GetRow
 ns.GetRowWidth = GetRowWidth
 ns.LAYOUT = LAYOUT
 ns.PetPage = PetPage
+ns.contentPanel = contentPanel
 ns.ROW_PADDING = ROW_PADDING
 ns.SECTION_ART = SECTION_ART
 ns.UpdateAbilitiesPanelLockState = UpdateAbilitiesPanelLockState

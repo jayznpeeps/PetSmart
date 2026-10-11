@@ -2,7 +2,7 @@
 ## Title: PetSmart
 ## Notes: Hunter pet feeding bar and pet-ability reference. Left-click the icon to feed your pet; right-click for learned/unlearned pet abilities and where to tame them.
 ## Author: Yellmourn
-## Version: 1.61.0
+## Version: 1.60.1e
 ## IconTexture: Interface\AddOns\PetSmart\Media\UI-Elements\AddonIcon
 ## SavedVariables: PetSmartDB
 

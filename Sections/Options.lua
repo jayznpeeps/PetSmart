@@ -192,10 +192,13 @@ StaticPopupDialogs["PETSMART_RESET_PROFILE"] = {
 ns.Pages.options = function(ctx)
     abilitiesPanel.title:SetText("Options")
 
-    local function AddToggle(label, dbKey, onToggle)
+    -- `note` (optional) is shown in grey brackets after the ON/OFF state.
+    local function AddToggle(label, dbKey, onToggle, note)
         local on = (ns.profile[dbKey] ~= false)
         local r, g, b = on and 0.2 or 0.6, on and 1 or 0.6, on and 0.2 or 0.6
-        ctx.AddLine(label .. ": " .. (on and "ON" or "OFF"), r, g, b, function()
+        local text = label .. ": " .. (on and "ON" or "OFF")
+        if note then text = text .. "  |cff999999(" .. note .. ")|r" end
+        ctx.AddLine(text, r, g, b, function()
             ns.profile[dbKey] = not on
             if onToggle then onToggle(not on) end
             ns.RefreshAbilitiesPanel()
@@ -208,6 +211,7 @@ ns.Pages.options = function(ctx)
 
     ctx.AddLine(" ", 1, 1, 1)
     ctx.AddLine("Tooltip", 1, 0.82, 0)
+    AddToggle("Show Tooltip", "tooltipEnabled", nil, "main icon")
     AddToggle("Show Pet Name", "tooltipShowName")
     AddToggle("Show Pet Loyalty", "tooltipShowLoyalty")
     AddToggle("Show Pet Happiness", "tooltipShowHappiness")
@@ -234,6 +238,15 @@ ns.Pages.options = function(ctx)
     AddToggle("Show Experience Bar", "xpBarEnabled", function() XP.Update() end)
     AddToggle("Show Bar Text", "xpBarShowText", function() XP.Update() end)
     AddToggle("Lock Bar (Move/Resize)", "xpBarLocked", function() XP.Update() end)
+    do
+        local row = XP.colorRow
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -ctx.y)
+        row:SetWidth(ctx.rowWidth)
+        XP.UpdateSwatch()
+        row:Show()
+        ctx.y = ctx.y + 22 + ROW_PADDING
+    end
     do
         local sliderHeight = 44
         for _, sl in ipairs({ XP.widthSlider, XP.heightSlider }) do
@@ -267,8 +280,7 @@ ns.Pages.options = function(ctx)
             SaveTrackedRaresToProfile()
             ns.UpdateRarePin()
         end
-    end)
-    ctx.AddLine("Multi-tracking can be immersion breaking.", 0.7, 0.7, 0.7)
+    end, "can break immersion")
 
     ctx.AddLine(" ", 1, 1, 1)
     ctx.AddLine("Compendium Panel", 1, 0.82, 0)
@@ -276,7 +288,7 @@ ns.Pages.options = function(ctx)
 
     ctx.AddLine(" ", 1, 1, 1)
     ctx.AddLine(" ", 1, 1, 1)
-    ctx.AddLine("PetSmart v1.61.0", 0.6, 0.6, 0.6)
+    ctx.AddLine("PetSmart v1.60.1e", 0.6, 0.6, 0.6)
     ctx.AddLine("Author: Yellmourn", 0.6, 0.6, 0.6)
     ctx.AddLine("Credit: wowhead.com, wow-petopia.com", 0.6, 0.6, 0.6)
     ctx.AddLine("Special thanks to Nosferatu.", 0.6, 0.6, 0.6)
@@ -291,7 +303,7 @@ ns.Pages.profiles = function(ctx)
 
     local charKey = GetCharKey()
     local activeName = PetSmartDB.profileKeys[charKey]
-    ctx.AddLine("This character is using:", 0.8, 0.8, 0.8)
+    ctx.AddLine(ns.GetCharName() .. " is using:", 0.8, 0.8, 0.8)
     ctx.AddLine(activeName, 1, 0.82, 0)
     ctx.AddLine("    Reset this profile to defaults", 1, 0.6, 0.2, function()
         StaticPopup_Show("PETSMART_RESET_PROFILE", activeName, nil, activeName)

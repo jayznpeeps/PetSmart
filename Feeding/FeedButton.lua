@@ -160,6 +160,8 @@ end
 -- is untracked while the tooltip is still open (otherwise it would keep
 -- showing that option, stale, until the mouse left and re-entered).
 local function ShowToggleTooltip(self)
+    -- Options > Tooltip > Show Tooltip turned off: no tooltip at all.
+    if ns.profile and ns.profile.tooltipEnabled == false then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:SetText("PetSmart")
     local petName = (ns.profile.tooltipShowName and UnitExists("pet")) and UnitName("pet") or nil
