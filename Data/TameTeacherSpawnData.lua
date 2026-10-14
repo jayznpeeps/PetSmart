@@ -774,6 +774,15 @@ local raw = {
     { name = "Moss Stalker", zone = "Silverpine Forest", fromAreas = true,
       description = "Found in several wide hunting grounds across Silverpine Forest - see the highlighted zones on the map." },
 
+    { name = "Bloodwing Bat", zone = "Hillsbrad Foothills", fromAreas = true,
+      description = "Found in several wide hunting grounds across Hillsbrad Foothills - see the highlighted zones on the map." },
+
+    { name = "Foothills Duskbat", zone = "Silverpine Forest", fromAreas = true,
+      description = "Found in several wide hunting grounds across Silverpine Forest - see the highlighted zones on the map." },
+
+    { name = "Gray Fox", zone = "Duskwood", fromAreas = true,
+      description = "Found in several wide hunting grounds across Duskwood - see the highlighted zones on the map." },
+
     -- No exact point found - zone and flavor text only, no Track button.
     { name = "Ukorsbane", zone = "Durotar", fromAreas = true,
       description = "An elite spider found in Durotar. It drops Ukor's Lost Pack, an item that starts a quest." },

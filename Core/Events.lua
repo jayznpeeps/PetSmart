@@ -185,7 +185,7 @@ ev:SetScript("OnEvent", function(self, event, arg1)
             if IsEligible() then ActivateAddon(self) end
         end
     elseif event == "PLAYER_REGEN_DISABLED" then
-        panel:Hide()
+        ns.HideFoodPanel()
         abilitiesPanelShownBeforeCombat = abilitiesPanel:IsShown()
         if abilitiesPanelShownBeforeCombat then abilitiesPanel:Hide() end
     elseif event == "PLAYER_REGEN_ENABLED" then
@@ -221,9 +221,14 @@ end)
 -- Slash commands
 ----------------------------------------------------------------------
 SLASH_PETSMART1, SLASH_PETSMART2 = "/petsmart", "/ps"
+-- Developer-only troubleshooting commands (e.g. /ps bt). Off in releases.
+local DEBUG_COMMANDS = false
 SlashCmdList["PETSMART"] = function(msg)
     local cmd = ((msg or ""):match("^%s*(%S+)") or ""):lower()
-    if cmd == "options" then
+    if DEBUG_COMMANDS and cmd == "bt" then
+        -- Troubleshooting: what PetSmart can read from the open Beast Training window.
+        if ns.BeastTraining then ns.BeastTraining.Debug() end
+    elseif cmd == "options" then
         -- Same as the launcher's right-click: straight to the Options page.
         LauncherOnClick("RightButton")
     else

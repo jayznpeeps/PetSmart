@@ -106,7 +106,7 @@ local function UpdateHappiness()
     else
         toggle.icon:SetVertexColor(0.4, 0.4, 0.4)
         toggle.hasPet = false
-        if panel:IsShown() then panel:Hide() end
+        if panel:IsShown() and not InCombatLockdown() then panel:Hide() end
     end
 
     if not UnitExists("pet") then
@@ -298,13 +298,16 @@ local function RefreshPanel()
 
     local cols = math.max(1, math.min(COLUMNS, #list))
     local rows = math.max(1, math.ceil(#list / COLUMNS))
+    -- Never narrower than the "Feed <pet name>" title (plus its 10px margins).
+    local titleW = math.ceil((panel.title:GetStringWidth() or 0) + 20)
     if #list == 0 then
         panel.empty:SetText(UnitExists("pet") and "No suitable pet food in your bags." or "You have no pet summoned.")
         panel.empty:Show()
-        panel:SetSize(200, 52)
+        local emptyW = math.ceil((panel.empty:GetStringWidth() or 0) + 20)
+        panel:SetSize(math.max(200, titleW, emptyW), 52)
     else
         panel.empty:Hide()
-        panel:SetSize(cols * (BUTTON_SIZE + PADDING) + PADDING + 12, rows * (BUTTON_SIZE + PADDING) + 32)
+        panel:SetSize(math.max(cols * (BUTTON_SIZE + PADDING) + PADDING + 12, titleW), rows * (BUTTON_SIZE + PADDING) + 32)
     end
 end
 
@@ -315,6 +318,15 @@ tinsert(UISpecialFrames, "PetSmartPanel") -- ESC closes it
 ns.ApplyIconSize = ApplyIconSize
 ns.GetLoyaltyLabel = GetLoyaltyLabel
 ns.RefreshPanel = RefreshPanel
+
+-- The food panel holds secure (protected) feed buttons, so it can't be shown,
+-- hidden or moved during combat - doing so is blocked (ADDON_ACTION_BLOCKED).
+-- Every "close the food panel" goes through here: it only acts when the panel
+-- is actually open and we're out of combat. (It's already closed when combat
+-- starts - see PLAYER_REGEN_DISABLED - so nothing is left open by this.)
+function ns.HideFoodPanel()
+    if panel:IsShown() and not InCombatLockdown() then panel:Hide() end
+end
 ns.ShowToggleTooltip = ShowToggleTooltip
 ns.UpdateHappiness = UpdateHappiness
 ns.panel = panel

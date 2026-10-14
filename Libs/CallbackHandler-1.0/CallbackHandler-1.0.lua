@@ -1,123 +1,202 @@
---[[-----------------------------------------------------------------------
-CallbackHandler-1.0 (fallback copy, bundled with PetSmart)
-
-A minimal, standards-compatible CallbackHandler-1.0: supports the standard
-:New/:RegisterCallback/:UnregisterCallback/:UnregisterAllCallbacks/:Fire
-surface that LibDataBroker-1.1 (and broker-display addons that talk to it)
-expect. Registered under a deliberately LOW minor version so that if any
-other addon on the system provides the real, full-featured CallbackHandler-
-1.0 (used by Ace3 and dozens of other libraries), LibStub keeps that one
-active instead of this one - this copy only matters when nothing else on
-the system has already provided it. Public domain, like the original
-(Hjortshoej/Hazzard Ace3 team).
--------------------------------------------------------------------------]]
-local MAJOR, MINOR = "CallbackHandler-1.0", 1
+--[[ $Id: CallbackHandler-1.0.lua 1298 2022-12-12 15:10:10Z nevcairiel $ ]]
+local MAJOR, MINOR = "CallbackHandler-1.0", 8
 local CallbackHandler = LibStub:NewLibrary(MAJOR, MINOR)
-if not CallbackHandler then return end
 
-local meta = { __index = function(tbl, key) tbl[key] = {} return tbl[key] end }
+if not CallbackHandler then return end -- No upgrade needed
 
-local function errorhandler(err)
-    return geterrorhandler and geterrorhandler()(err) or print(err)
-end
+local meta = {__index = function(tbl, key) tbl[key] = {} return tbl[key] end}
+
+-- Lua APIs
+local securecallfunction, error = securecallfunction, error
+local setmetatable, rawget = setmetatable, rawget
+local next, select, pairs, type, tostring = next, select, pairs, type, tostring
+
 
 local function Dispatch(handlers, ...)
-    local index, method = next(handlers)
-    if not method then return end
-    repeat
-        local ok, err = pcall(method, ...)
-        if not ok then errorhandler(err) end
-        index, method = next(handlers, index)
-    until not method
+	local index, method = next(handlers)
+	if not method then return end
+	repeat
+		securecallfunction(method, ...)
+		index, method = next(handlers, index)
+	until not method
 end
 
-function CallbackHandler:New(target, registerName, unregisterName, unregisterAllName)
-    target = target or {}
-    registerName = registerName or "RegisterCallback"
-    unregisterName = unregisterName or "UnregisterCallback"
-    if unregisterAllName == nil then
-        unregisterAllName = "UnregisterAllCallbacks"
-    end
+--------------------------------------------------------------------------
+-- CallbackHandler:New
+--
+--   target            - target object to embed public APIs in
+--   RegisterName      - name of the callback registration API, default "RegisterCallback"
+--   UnregisterName    - name of the callback unregistration API, default "UnregisterCallback"
+--   UnregisterAllName - name of the API to unregister all callbacks, default "UnregisterAllCallbacks". false == don't publish this API.
 
-    local events = setmetatable({}, meta)
-    local registry = { recurse = 0, events = events }
+function CallbackHandler.New(_self, target, RegisterName, UnregisterName, UnregisterAllName)
 
-    target[registerName] = function(self, eventname, method, ...)
-        if type(eventname) ~= "string" then
-            error("Usage: " .. registerName .. "(eventname, method[, ...]): 'eventname' must be a string.", 2)
-        end
-        method = method or eventname
+	RegisterName = RegisterName or "RegisterCallback"
+	UnregisterName = UnregisterName or "UnregisterCallback"
+	if UnregisterAllName==nil then	-- false is used to indicate "don't want this method"
+		UnregisterAllName = "UnregisterAllCallbacks"
+	end
 
-        local first = next(events[eventname]) == nil
-        if type(method) == "string" then
-            if type(self) ~= "table" then
-                error("Usage: " .. registerName .. "(eventname, methodname): self was not a table.", 2)
-            elseif self == target then
-                error("Usage: " .. registerName .. "(eventname, methodname): do not pass self as target.", 2)
-            elseif type(self[method]) ~= "function" then
-                error("Usage: " .. registerName .. "(eventname, methodname): '" .. tostring(method) .. "' is not a method on self.", 2)
-            end
-            events[eventname][self] = function(...) return self[method](self, ...) end
-        elseif type(method) == "function" then
-            events[eventname][self or method] = method
-        else
-            error("Usage: " .. registerName .. "(eventname, method): 'method' must be a string or function.", 2)
-        end
+	-- we declare all objects and exported APIs inside this closure to quickly gain access
+	-- to e.g. function names, the "target" parameter, etc
 
-        if registry.OnUsed and first then
-            registry.OnUsed(registry, target, eventname)
-        end
-    end
 
-    target[unregisterName] = function(self, eventname)
-        if events[eventname] and events[eventname][self] then
-            events[eventname][self] = nil
-            if registry.OnUnused and next(events[eventname]) == nil then
-                registry.OnUnused(registry, target, eventname)
-            end
-        end
-    end
+	-- Create the registry object
+	local events = setmetatable({}, meta)
+	local registry = { recurse=0, events=events }
 
-    if unregisterAllName then
-        target[unregisterAllName] = function(self, ...)
-            if select("#", ...) == 0 then
-                for eventname, handlers in pairs(events) do
-                    if handlers[self] then
-                        handlers[self] = nil
-                        if registry.OnUnused and next(handlers) == nil then
-                            registry.OnUnused(registry, target, eventname)
-                        end
-                    end
-                end
-            else
-                for i = 1, select("#", ...) do
-                    local eventname = select(i, ...)
-                    if events[eventname] and events[eventname][self] then
-                        events[eventname][self] = nil
-                        if registry.OnUnused and next(events[eventname]) == nil then
-                            registry.OnUnused(registry, target, eventname)
-                        end
-                    end
-                end
-            end
-        end
-    end
+	-- registry:Fire() - fires the given event/message into the registry
+	function registry:Fire(eventname, ...)
+		if not rawget(events, eventname) or not next(events[eventname]) then return end
+		local oldrecurse = registry.recurse
+		registry.recurse = oldrecurse + 1
 
-    registry.Fire = function(_, eventname, ...)
-        if not events[eventname] or not next(events[eventname]) then return end
-        local oldrecurse = registry.recurse
-        registry.recurse = oldrecurse + 1
+		Dispatch(events[eventname], eventname, ...)
 
-        -- snapshot the handler list so Fire is safe against handlers that
-        -- register/unregister mid-dispatch
-        local snapshot = {}
-        for key, method in pairs(events[eventname]) do
-            snapshot[key] = method
-        end
-        Dispatch(snapshot, eventname, ...)
+		registry.recurse = oldrecurse
 
-        registry.recurse = oldrecurse
-    end
+		if registry.insertQueue and oldrecurse==0 then
+			-- Something in one of our callbacks wanted to register more callbacks; they got queued
+			for event,callbacks in pairs(registry.insertQueue) do
+				local first = not rawget(events, event) or not next(events[event])	-- test for empty before. not test for one member after. that one member may have been overwritten.
+				for object,func in pairs(callbacks) do
+					events[event][object] = func
+					-- fire OnUsed callback?
+					if first and registry.OnUsed then
+						registry.OnUsed(registry, target, event)
+						first = nil
+					end
+				end
+			end
+			registry.insertQueue = nil
+		end
+	end
 
-    return registry
+	-- Registration of a callback, handles:
+	--   self["method"], leads to self["method"](self, ...)
+	--   self with function ref, leads to functionref(...)
+	--   "addonId" (instead of self) with function ref, leads to functionref(...)
+	-- all with an optional arg, which, if present, gets passed as first argument (after self if present)
+	target[RegisterName] = function(self, eventname, method, ... --[[actually just a single arg]])
+		if type(eventname) ~= "string" then
+			error("Usage: "..RegisterName.."(eventname, method[, arg]): 'eventname' - string expected.", 2)
+		end
+
+		method = method or eventname
+
+		local first = not rawget(events, eventname) or not next(events[eventname])	-- test for empty before. not test for one member after. that one member may have been overwritten.
+
+		if type(method) ~= "string" and type(method) ~= "function" then
+			error("Usage: "..RegisterName.."(\"eventname\", \"methodname\"): 'methodname' - string or function expected.", 2)
+		end
+
+		local regfunc
+
+		if type(method) == "string" then
+			-- self["method"] calling style
+			if type(self) ~= "table" then
+				error("Usage: "..RegisterName.."(\"eventname\", \"methodname\"): self was not a table?", 2)
+			elseif self==target then
+				error("Usage: "..RegisterName.."(\"eventname\", \"methodname\"): do not use Library:"..RegisterName.."(), use your own 'self'", 2)
+			elseif type(self[method]) ~= "function" then
+				error("Usage: "..RegisterName.."(\"eventname\", \"methodname\"): 'methodname' - method '"..tostring(method).."' not found on self.", 2)
+			end
+
+			if select("#",...)>=1 then	-- this is not the same as testing for arg==nil!
+				local arg=select(1,...)
+				regfunc = function(...) self[method](self,arg,...) end
+			else
+				regfunc = function(...) self[method](self,...) end
+			end
+		else
+			-- function ref with self=object or self="addonId" or self=thread
+			if type(self)~="table" and type(self)~="string" and type(self)~="thread" then
+				error("Usage: "..RegisterName.."(self or \"addonId\", eventname, method): 'self or addonId': table or string or thread expected.", 2)
+			end
+
+			if select("#",...)>=1 then	-- this is not the same as testing for arg==nil!
+				local arg=select(1,...)
+				regfunc = function(...) method(arg,...) end
+			else
+				regfunc = method
+			end
+		end
+
+
+		if events[eventname][self] or registry.recurse<1 then
+		-- if registry.recurse<1 then
+			-- we're overwriting an existing entry, or not currently recursing. just set it.
+			events[eventname][self] = regfunc
+			-- fire OnUsed callback?
+			if registry.OnUsed and first then
+				registry.OnUsed(registry, target, eventname)
+			end
+		else
+			-- we're currently processing a callback in this registry, so delay the registration of this new entry!
+			-- yes, we're a bit wasteful on garbage, but this is a fringe case, so we're picking low implementation overhead over garbage efficiency
+			registry.insertQueue = registry.insertQueue or setmetatable({},meta)
+			registry.insertQueue[eventname][self] = regfunc
+		end
+	end
+
+	-- Unregister a callback
+	target[UnregisterName] = function(self, eventname)
+		if not self or self==target then
+			error("Usage: "..UnregisterName.."(eventname): bad 'self'", 2)
+		end
+		if type(eventname) ~= "string" then
+			error("Usage: "..UnregisterName.."(eventname): 'eventname' - string expected.", 2)
+		end
+		if rawget(events, eventname) and events[eventname][self] then
+			events[eventname][self] = nil
+			-- Fire OnUnused callback?
+			if registry.OnUnused and not next(events[eventname]) then
+				registry.OnUnused(registry, target, eventname)
+			end
+		end
+		if registry.insertQueue and rawget(registry.insertQueue, eventname) and registry.insertQueue[eventname][self] then
+			registry.insertQueue[eventname][self] = nil
+		end
+	end
+
+	-- OPTIONAL: Unregister all callbacks for given selfs/addonIds
+	if UnregisterAllName then
+		target[UnregisterAllName] = function(...)
+			if select("#",...)<1 then
+				error("Usage: "..UnregisterAllName.."([whatFor]): missing 'self' or \"addonId\" to unregister events for.", 2)
+			end
+			if select("#",...)==1 and ...==target then
+				error("Usage: "..UnregisterAllName.."([whatFor]): supply a meaningful 'self' or \"addonId\"", 2)
+			end
+
+
+			for i=1,select("#",...) do
+				local self = select(i,...)
+				if registry.insertQueue then
+					for eventname, callbacks in pairs(registry.insertQueue) do
+						if callbacks[self] then
+							callbacks[self] = nil
+						end
+					end
+				end
+				for eventname, callbacks in pairs(events) do
+					if callbacks[self] then
+						callbacks[self] = nil
+						-- Fire OnUnused callback?
+						if registry.OnUnused and not next(callbacks) then
+							registry.OnUnused(registry, target, eventname)
+						end
+					end
+				end
+			end
+		end
+	end
+
+	return registry
 end
+
+
+-- CallbackHandler purposefully does NOT do explicit embedding. Nor does it
+-- try to upgrade old implicit embeds since the system is selfcontained and
+-- relies on closures to work.
+

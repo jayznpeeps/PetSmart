@@ -71,16 +71,23 @@ end
 -- Checked before the keyword pass, but a player's own /fp override (see
 -- Classify() below) still wins over even this.
 local KNOWN_ITEMS = {
-    [1205] = "Fruit", -- Melon Juice
+    [1205] = "NONE",  -- Melon Juice - a drink for players (restores mana), not pet food
     [6889] = "NONE",  -- Small Egg - a cooking crafting reagent, not something a pet can eat
                        -- (its name matched the "egg" keyword in the Meat list below, which is
                        -- otherwise meant for real food like eggs/omelets, not this reagent)
 }
 
+-- Same idea, by exact item name (lower-case) - for items whose ID isn't
+-- recorded here, e.g. Forever-only foods.
+local KNOWN_NAMES = {
+    ["melon juice"] = "NONE",               -- player drink (mana), not pet food
+    ["red delicious stormapple"] = "Fruit", -- Forever fruit
+}
+
 local KEYWORDS = {
     { "Cheese", { "cheese", "bleu", "brie", "swiss", "sharp", "cheddar" } },
     { "Fungus", { "mushroom", "mushrooms", "truffle", "fungus", "morel", "shroom" } },
-    { "Fruit",  { "apple", "banana", "melon", "berry", "berries", "pear", "grape", "grapes",
+    { "Fruit",  { "apple", "stormapple", "banana", "melon", "berry", "berries", "pear", "grape", "grapes",
                   "peach", "pineapple", "plum", "cherry", "orange", "lemon", "fruit", "fig",
                   "coconut", "mango", "papaya", "pomegranate" } },
     { "Bread",  { "bread", "muffin", "biscuit", "roll", "rolls", "loaf", "cornbread", "flatbread",
@@ -101,6 +108,7 @@ local function Classify(itemID, name)
     if override then return override end
     if KNOWN_ITEMS[itemID] then return KNOWN_ITEMS[itemID] end
     local lname = (name or ""):lower()
+    if KNOWN_NAMES[lname] then return KNOWN_NAMES[lname] end
     for _, group in ipairs(KEYWORDS) do
         for _, kw in ipairs(group[2]) do
             if lname:find("%f[%a]" .. kw .. "%f[%A]") then return group[1] end

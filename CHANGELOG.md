@@ -1,5 +1,16 @@
 # PetSmart Changelog
 
+## v1.60.1f
+
+- **Minimap button:** The minimap button now uses the standard LibDBIcon-1.0 library, so minimap button managers like Leatrix Plus can pick it up. Your saved button position carries over.
+- **Beast Training paws:** each ability on your pet's Learned and Unlearned lists and in the Abilities Index has a paw beside it: green if it's in your Beast Training, red if not yet. It turns green when you learn the ability (PetSmart spots the "You have learned ..." message) or when you open Beast Training, and it's remembered between sessions.
+- **Tame data:** added Gray Fox (Duskwood) as the Trickster's Dance 1 teacher, Foothills Duskbat (Silverpine Forest) for Sonic Blast 1, Bloodwing Bat (Hillsbrad Foothills) for Sonic Blast 2, and Matriarch Bristlefur (Elwynn Forest) for Claw 2. Gray Fox, Foothills Duskbat and Bloodwing Bat can be tracked on the map with highlighted spawn areas. Highlands Ursera's level is now 7-8. Removed Vuldren Alpha from Trickster's Dance 1. Removed Prairie Wolf Alpha from Furious Howl 1.
+- **Rare data:** Slydris's level is now 6.
+- **Pet food:** Melon Juice is no longer offered as pet food (it's a player drink), and Red Delicious Stormapple is now recognised as fruit.
+- **Feed panel:** it's now always wide enough for its "Feed <pet name>" title, even with only one food in it. Left-clicking the icon with no food your pet will eat now says so instead of opening an empty panel.
+- **Fixed:** a "PetSmart tried to call the protected function" error when right-clicking the icon during combat.
+- Bundled libraries updated to the current standard versions (LibStub, CallbackHandler-1.0, LibDataBroker-1.1) and LibDBIcon-1.0 added.
+
 ## v1.60.1e
 
 ### Compendium redesign

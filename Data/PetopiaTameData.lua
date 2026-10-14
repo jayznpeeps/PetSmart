@@ -191,7 +191,7 @@ ns.PETOPIA_TAME_MOBS = {
             {"Pygmy Surf Crawler","Crab","5-6","Durotar"},
             {"Strigid Owl","Bird of Prey","5-6","Teldrassil"},
             {"Ice Claw Bear","Bear","7-8","Dun Morogh"},
-            {"Highlands Ursera","Bear","8","Zephras Isle"},
+            {"Highlands Ursera","Bear","7-8","Zephras Isle"},
         },
         [2] = {
             {"Windsong Crawler","Crab","8-9","Zephras Isle"},
@@ -199,6 +199,7 @@ ns.PETOPIA_TAME_MOBS = {
             {"Strigid Hunter","Bird of Prey","8-9","Teldrassil"},
             {"Encrusted Surf Crawler","Crab","9-10","Durotar"},
             {"Venomtail Scorpid","Scorpid","9-10","Durotar"},
+            {"Matriarch Bristlefur","Bear","10","Elwynn Forest"},
             {"Mangeclaw","Bear","11","Dun Morogh"},
             {"Death Flayer","Scorpid","11","Durotar"},
             {"Ferocious Grizzled Bear","Bear","11-12","Silverpine Forest"},
@@ -396,7 +397,9 @@ ns.PETOPIA_TAME_MOBS = {
 
     furioushowl = {
         [1] = {
-            {"Prairie Wolf Alpha","Wolf","9-10","Mulgore"},
+            -- Prairie Wolf Alpha (Mulgore) removed as a Furious Howl 1 teacher for now (it doesn't
+            -- teach it on Forever). Its spawn/area data is kept in case that's a bug and it returns:
+            -- {"Prairie Wolf Alpha","Wolf","9-10","Mulgore"},
             {"Worg","Wolf","10-11","Silverpine Forest"},
             {"Coyote Packleader","Wolf","11-12","Westfall"},
             {"Coldrasp","Wolf","12","Tirisfal Glades"},
@@ -520,6 +523,15 @@ ns.PETOPIA_TAME_MOBS = {
         },
     },
 
+    sonicblast = {
+        [1] = {
+            {"Foothills Duskbat","Bat","12-13","Silverpine Forest"},
+        },
+        [2] = {
+            {"Bloodwing Bat","Bat","25-26","Hillsbrad Foothills"},
+        },
+    },
+
     -- Demoralizing Screech (renamed from Screech, Carrion-Bird-exclusive
     -- on Forever): non-Carrion-Bird sources from Petopia's shared-Screech
     -- page removed. No Carrion Bird source is recorded for rank 4.
@@ -562,9 +574,10 @@ ns.PETOPIA_TAME_MOBS = {
         },
     },
 
+    -- Vuldren Alpha (Zephras Isle) does NOT teach Trickster's Dance 1.
     tricklersdance = {
         [1] = {
-            {"Vuldren Alpha","Fox","10","Zephras Isle"},
+            {"Gray Fox","Fox","22","Duskwood"},
         },
     },
 

@@ -3,7 +3,7 @@ name: PetSmart Issues
 about: PetSmart Issues
 title: ''
 labels: bug
-assignees: jayznpeeps
+assignees: Yellmourn
 
 ---
 

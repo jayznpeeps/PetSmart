@@ -345,6 +345,15 @@ local function BuildIndexLines()
     return sections
 end
 
+-- Key under the pet's Learned / Unlearned lists and the Abilities Index explaining the paws.
+function ns.AddPawKey(ctx)
+    local BT = ns.BeastTraining
+    ctx.AddLine(" ", 1, 1, 1)
+    ctx.AddLine(("|T%s:12:12|t In your Beast Training   |T%s:12:12|t Not in Beast Training yet"):format(BT.PAW_GREEN, BT.PAW_RED), 0.7, 0.7, 0.7)
+    ctx.AddLine("Paws update when you learn an ability (from its chat message) or open Beast Training. "
+        .. "If one looks wrong, open Beast Training once to refresh it.", 0.6, 0.6, 0.6)
+end
+
 ns.Pages.learned = function(ctx)
     -- Part of the pet page: same header (name, level, loyalty, XP bar),
     -- with this list in place of the stats.
@@ -354,10 +363,14 @@ ns.Pages.learned = function(ctx)
     else
         local learned = BuildAbilityLines()
         local items = {}
+        -- Paw: green = the hunter can teach it from Beast Training, red = not yet.
+        local BT = ns.BeastTraining
         for _, e in ipairs(learned) do
-            items[#items + 1] = { text = e.text, color = { 0.9, 1, 0.9 } }
+            local paw = BT and (BT.Paw(e.data) .. " ") or ""
+            items[#items + 1] = { text = paw .. e.text, color = { 0.9, 1, 0.9 } }
         end
         ctx.AddList(items, "No trained abilities found for this pet.")
+        if BT and #learned > 0 then ns.AddPawKey(ctx) end
     end
 end
 
@@ -370,10 +383,14 @@ ns.Pages.unlearned = function(ctx)
     else
         local _, unlearned = BuildAbilityLines()
         local items = {}
+        -- Paw: green = it's in your Beast Training, so you can teach it now.
+        local BT = ns.BeastTraining
         for _, e in ipairs(unlearned) do
-            items[#items + 1] = { text = e.text, color = { 1, 1, 1 }, onClick = function() SetAbilitiesMode("detail", e.data, "unlearned") end }
+            local paw = BT and (BT.Paw(e.data) .. " ") or ""
+            items[#items + 1] = { text = paw .. e.text, color = { 1, 1, 1 }, onClick = function() SetAbilitiesMode("detail", e.data, "unlearned") end }
         end
         ctx.AddList(items, "No unlearned ranks within reach of your current level.")
+        if BT and #unlearned > 0 then ns.AddPawKey(ctx) end
     end
 end
 
@@ -381,6 +398,9 @@ ns.Pages.index = function(ctx)
     abilitiesPanel.title:SetText("Abilities Index")
     Tame.ShowUntrackButton(ns.RefreshAbilitiesPanel)
     local sections = BuildIndexLines()
+    -- Paw beside every rank, same as the pet's Learned/Unlearned lists:
+    -- green = it's in your Beast Training, red = not yet.
+    local BT = ns.BeastTraining
     if #sections == 0 then
         ctx.AddLine("No ability data loaded.", 0.7, 0.7, 0.7)
     else
@@ -393,11 +413,13 @@ ns.Pages.index = function(ctx)
             end)
             if expanded then
                 for _, item in ipairs(section.items) do
-                    ctx.AddLine(item.text, 1, 1, 1, function() SetAbilitiesMode("detail", item.data, "index") end)
+                    local paw = BT and (BT.Paw(item.data) .. " ") or ""
+                    ctx.AddLine(paw .. item.text, 1, 1, 1, function() SetAbilitiesMode("detail", item.data, "index") end)
                 end
                 ctx.AddLine(" ", 1, 1, 1)
             end
         end
+        if BT then ns.AddPawKey(ctx) end
     end
 end
 

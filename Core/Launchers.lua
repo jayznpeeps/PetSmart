@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------
 -- PetSmart: Core/Launchers.lua
--- Icon/launcher behaviour: Feed Pet icon clicks, click-off, LibDataBroker, minimap button.
+-- Icon/launcher behaviour: Feed Pet icon clicks, click-off, LibDataBroker, LibDBIcon minimap button.
 --------------------------------------------------------------------------
 local addonName, ns = ...
 
@@ -25,7 +25,7 @@ toggle:SetScript("OnClick", function(self, button)
         if abilitiesPanel:IsShown() then
             abilitiesPanel:Hide()
         else
-            panel:Hide()
+            ns.HideFoodPanel()
             -- Free-floating now - leave it wherever it was last put. Only
             -- the very first time, with nothing saved yet, does it default
             -- to popping up next to the icon.
@@ -61,7 +61,14 @@ toggle:SetScript("OnClick", function(self, button)
         return
     end
     if panel:IsShown() then
-        panel:Hide()
+        ns.HideFoodPanel()
+    elseif #ns.BuildFoodList() == 0 then
+        -- Nothing in the bags this pet will eat: say so instead of opening an empty panel.
+        local petName = UnitName("pet")
+        if not petName or (issecretvalue and issecretvalue(petName)) then petName = "your pet" end
+        local msg = ("You have no food that %s will eat."):format(petName)
+        Print(msg)
+        if UIErrorsFrame and UIErrorsFrame.AddMessage then UIErrorsFrame:AddMessage(msg, 1, 0.1, 0.1) end
     else
         abilitiesPanel:Hide()
         panel:ClearAllPoints()
@@ -108,9 +115,7 @@ WorldFrame:HookScript("OnMouseDown", function(_, button)
     -- panel to dismiss it" gesture - only left-click (targeting/
     -- interacting) should close the panel.
     if button ~= "LeftButton" then return end
-    if panel:IsShown() then
-        panel:Hide()
-    end
+    ns.HideFoodPanel()
 end)
 
 ----------------------------------------------------------------------
@@ -188,20 +193,45 @@ local function LauncherOnClick(button, callerFrame)
 end
 
 ----------------------------------------------------------------------
--- LibDataBroker-1.1 integration: lets broker-display addons (Titan
--- Panel, Bazooka, ChocolateBar, and similar) show PetSmart on their own
--- bar instead of (or alongside) the free-floating on-screen icon.
--- Registered once, from ActivateAddon, so it only ever shows up for
--- eligible Hunters, same as the icon itself. No PetSmart option controls
--- whether it's shown from here on - that's left to the broker-display
--- addon itself, same as it is for every other addon's data object.
+-- LibDataBroker-1.1 launcher + LibDBIcon-1.0 minimap button.
+--
+-- The broker object lets broker-display addons (Titan Panel, Bazooka,
+-- ChocolateBar, ...) show PetSmart on their own bar. The minimap button
+-- is that same object registered with LibDBIcon-1.0, the standard
+-- minimap-button library, so minimap managers (Leatrix Plus's button bag,
+-- MinimapButtonButton, SexyMap, square minimaps, ...) can find, move and
+-- group it like any other addon's button. Its position around the
+-- minimap is account-wide (PetSmartDB.minimapIcon); whether it's shown is
+-- the per-profile "Show Minimap Icon" option.
+-- Registered once, from ActivateAddon, so both only appear for eligible
+-- Hunters.
 ----------------------------------------------------------------------
+local BROKER_NAME = "PetSmart"
+local dataObject
+
+-- LibDBIcon's saved table ({ hide, minimapPos, ... }). Carries over the
+-- angle the old hand-made minimap button was dragged to (same 0-360
+-- degree convention, 225 = bottom-left by default).
+local function MinimapIconDB()
+    PetSmartDB.minimapIcon = PetSmartDB.minimapIcon or {}
+    local db = PetSmartDB.minimapIcon
+    if db.minimapPos == nil and PetSmartDB.minimapIconAngle then
+        db.minimapPos = PetSmartDB.minimapIconAngle % 360
+    end
+    PetSmartDB.minimapIconAngle = nil
+    return db
+end
+
+local function GetDBIcon()
+    return LibStub and LibStub:GetLibrary("LibDBIcon-1.0", true)
+end
+
 ns.RegisterDataBrokerObject = function()
     if brokerRegistered then return end
     local LDB = LibStub and LibStub:GetLibrary("LibDataBroker-1.1", true)
     if not LDB then return end
 
-    LDB:NewDataObject("PetSmart", {
+    dataObject = LDB:NewDataObject(BROKER_NAME, {
         type = "launcher",
         text = "PetSmart",
         icon = "Interface\\AddOns\\PetSmart\\Media\\UI-Elements\\BrokerIcon",
@@ -212,76 +242,32 @@ ns.RegisterDataBrokerObject = function()
         end,
     })
     brokerRegistered = true
+
+    local DBIcon = GetDBIcon()
+    if DBIcon and dataObject and not DBIcon:IsRegistered(BROKER_NAME) then
+        local db = MinimapIconDB()
+        db.hide = not (ns.profile and ns.profile.showMinimapIcon ~= false)
+        DBIcon:Register(BROKER_NAME, dataObject, db)
+    end
 end
 
-----------------------------------------------------------------------
--- Minimap launcher icon: a draggable button on the minimap mirroring
--- the broker launcher above - same icon, same two actions. Hand-rolled
--- rather than built on LibDBIcon-1.0: the orbit-position math it needs
--- is small and self-contained enough not to be worth pulling in a whole
--- extra library for. Its angle around the minimap is account-wide (like
--- the on-screen icon's own dragged position), while whether it's shown
--- at all is the per-profile "Show Minimap Icon" option.
-----------------------------------------------------------------------
-local minimapIcon = CreateFrame("Button", "PetSmartMinimapButton", Minimap)
-minimapIcon:SetSize(31, 31)
-minimapIcon:SetFrameStrata("MEDIUM")
-minimapIcon:SetFrameLevel(8)
-minimapIcon:RegisterForClicks("LeftButtonUp", "RightButtonUp", "MiddleButtonUp")
-minimapIcon:RegisterForDrag("LeftButton")
-minimapIcon:SetHighlightTexture(136477) -- Interface\Minimap\UI-Minimap-ZoomButton-Highlight
-minimapIcon:Hide()
-
-local miOverlay = minimapIcon:CreateTexture(nil, "OVERLAY")
-miOverlay:SetSize(53, 53)
-miOverlay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-miOverlay:SetPoint("TOPLEFT", 0, 0)
-
-local miBackground = minimapIcon:CreateTexture(nil, "BACKGROUND")
-miBackground:SetSize(20, 20)
-miBackground:SetTexture(136467) -- Interface\Minimap\UI-Minimap-Background
-miBackground:SetPoint("TOPLEFT", 7, -5)
-
-local miIcon = minimapIcon:CreateTexture(nil, "ARTWORK")
-miIcon:SetSize(18, 18)
-miIcon:SetTexture("Interface\\AddOns\\PetSmart\\Media\\UI-Elements\\BrokerIcon")
-miIcon:SetPoint("TOPLEFT", 7, -6)
-
-ns.UpdateMinimapIconPosition = function()
-    local angle = math.rad(PetSmartDB.minimapIconAngle or 225)
-    local radius = (Minimap:GetWidth() / 2) + 5
-    minimapIcon:ClearAllPoints()
-    minimapIcon:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * radius, math.sin(angle) * radius)
-end
-
-minimapIcon:SetScript("OnDragStart", function(self)
-    self:SetScript("OnUpdate", function()
-        local mx, my = Minimap:GetCenter()
-        if not mx then return end
-        local px, py = GetCursorPosition()
-        local scale = Minimap:GetEffectiveScale()
-        px, py = px / scale, py / scale
-        PetSmartDB.minimapIconAngle = math.deg(math.atan2(py - my, px - mx))
-        ns.UpdateMinimapIconPosition()
-    end)
-end)
-minimapIcon:SetScript("OnDragStop", function(self)
-    self:SetScript("OnUpdate", nil)
-end)
-minimapIcon:SetScript("OnClick", function(self, button) LauncherOnClick(button, self) end)
-minimapIcon:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    LauncherOnTooltipShow(GameTooltip)
-    GameTooltip:Show()
-end)
-minimapIcon:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
--- Shown/hidden per the active profile's "Show Minimap Icon" option. Only
--- ever called from ActivateAddon (so it only ever appears for eligible
--- Hunters) and from the Options toggle, both of which only run once
--- `profile` is already set - never before login/activation.
+-- Shown/hidden per the active profile's "Show Minimap Icon" option (Options
+-- toggle, profile switches, and login).
 ns.UpdateMinimapIconShown = function()
-    minimapIcon:SetShown(ns.profile and ns.profile.showMinimapIcon ~= false)
+    local DBIcon = GetDBIcon()
+    if not (DBIcon and DBIcon:IsRegistered(BROKER_NAME)) then return end
+    local show = ns.profile and ns.profile.showMinimapIcon ~= false
+    MinimapIconDB().hide = not show
+    if show then DBIcon:Show(BROKER_NAME) else DBIcon:Hide(BROKER_NAME) end
+end
+
+-- LibDBIcon positions (and remembers) the button itself; kept so older
+-- callers still work.
+ns.UpdateMinimapIconPosition = function()
+    local DBIcon = GetDBIcon()
+    if DBIcon and DBIcon:IsRegistered(BROKER_NAME) and DBIcon.Refresh then
+        DBIcon:Refresh(BROKER_NAME, MinimapIconDB())
+    end
 end
 
 ----------------------------------------------------------------------

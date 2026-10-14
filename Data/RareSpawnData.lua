@@ -223,9 +223,9 @@ local raw = {
       description = "A rare crocolisk found in the waters of the Loch in Loch Modan." },
 
     -- Foxes
-    { name = "Slydris", family = "Fox", level = "Unknown", zone = "Zephras Isle",
+    { name = "Slydris", family = "Fox", level = "6", zone = "Zephras Isle",
       x = 51.0, y = 51.0,
-      description = "A rare fox skulking the floating terraces of Zephras Isle; sightings are scarce enough that even its exact strength remains unconfirmed." },
+      description = "A rare fox skulking the floating terraces of Zephras Isle, rarely seen for long before it slips away again." },
 
     -- Gorillas
     { name = "Kurmokk", family = "Gorilla", level = "42", zone = "Stranglethorn Vale",

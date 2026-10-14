@@ -288,7 +288,7 @@ ns.Pages.options = function(ctx)
 
     ctx.AddLine(" ", 1, 1, 1)
     ctx.AddLine(" ", 1, 1, 1)
-    ctx.AddLine("PetSmart v1.60.1e", 0.6, 0.6, 0.6)
+    ctx.AddLine("PetSmart v1.60.1f", 0.6, 0.6, 0.6)
     ctx.AddLine("Author: Yellmourn", 0.6, 0.6, 0.6)
     ctx.AddLine("Credit: wowhead.com, wow-petopia.com", 0.6, 0.6, 0.6)
     ctx.AddLine("Special thanks to Nosferatu.", 0.6, 0.6, 0.6)
